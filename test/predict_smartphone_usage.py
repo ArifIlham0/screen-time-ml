@@ -7,7 +7,7 @@ import os
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(script_dir, '..', 'data')
-file_path = os.path.join(data_dir, 'mobile_usage_merged.csv')
+file_path = os.path.join(data_dir, 'mobile_usage_st.csv')
 df = pd.read_csv(file_path)
 features = df[['Daily_Screen_Time_Hours', 'Age', 'Total_App_Usage_Hours']]
 
