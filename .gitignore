@@ -56,3 +56,5 @@ htmlcov/
 
 node_modules/
 test/merge_dataset.py
+test/add_dummy_data.py
+test/change_column.py
