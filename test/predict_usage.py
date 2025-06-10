@@ -38,9 +38,6 @@ class SmartphoneUsagePredictor:
             raise
     
     def create_features_from_input(self, app_usage_time, screen_time, open_apps, age):
-        """
-        Create all required features from the 4 user inputs
-        """
         # Create a dictionary to store all features
         features = {}
         
@@ -50,9 +47,7 @@ class SmartphoneUsagePredictor:
         features['Screen On Time (hours/day)'] = screen_time
         features['Open Apps'] = open_apps
         
-        # For missing features, we'll use reasonable defaults or statistical estimates
-        # Battery Drain estimation (based on typical smartphone usage patterns)
-        # Typically 200-400 mAh per hour of screen time
+        # For missing features, we'll use reasonable defaults or statistical estimates, typically 200-400 mAh per hour of screen time
         estimated_battery_drain = screen_time * 300 + app_usage_time * 2
         features['Battery Drain (mAh/day)'] = estimated_battery_drain
         
@@ -68,7 +63,6 @@ class SmartphoneUsagePredictor:
         features['Data_per_Hour'] = estimated_data_usage / (screen_time + 0.1)
         
         # Usage Intensity (using the same formula as preprocessing)
-        # Need to normalize using the max values from training data
         app_usage_norm = app_usage_time / self.feature_stats['App Usage Time (min/day)_max']
         battery_norm = estimated_battery_drain / self.feature_stats['Battery Drain (mAh/day)_max']
         screen_norm = screen_time / self.feature_stats['Screen On Time (hours/day)_max']
@@ -93,13 +87,9 @@ class SmartphoneUsagePredictor:
         features['Battery_Variance'] = abs(estimated_battery_drain - self.feature_stats['Battery Drain (mAh/day)_mean'])
         
         # Power User indicator
-        app_usage_75th = self.feature_stats['App Usage Time (min/day)_max'] * 0.75  # Approximation
-        battery_75th = self.feature_stats['Battery Drain (mAh/day)_max'] * 0.75    # Approximation
-        
-        features['Is_Power_User'] = int(
-            (app_usage_time > app_usage_75th) and 
-            (estimated_battery_drain > battery_75th)
-        )
+        app_usage_75th = self.feature_stats['App Usage Time (min/day)_max'] * 0.75
+        battery_75th = self.feature_stats['Battery Drain (mAh/day)_max'] * 0.75
+        features['Is_Power_User'] = int((app_usage_time > app_usage_75th) and (estimated_battery_drain > battery_75th))
         
         # Polynomial features
         features['App_Usage_Squared'] = app_usage_time ** 2
@@ -111,45 +101,44 @@ class SmartphoneUsagePredictor:
         features['Battery_Data_Interaction'] = estimated_battery_drain * estimated_data_usage
         
         # Age group encoding (same bins as preprocessing)
-        if age <= 11:
-            age_group = 'Children'
-        elif age <= 25:
-            age_group = 'Teenager'
-        elif age <= 45:  
-            age_group = 'Adult'
-        else:
-            age_group = 'Elderly'
-        
-        # Age group one-hot encoding
+        age_bins = self.feature_stats.get('age_bins')
+        age_labels = ['Children', 'Teenager', 'Adult', 'Elderly']
+        age_group = None
+        for i in range(len(age_bins)-1):
+            if age >= age_bins[i] and age < age_bins[i+1]:
+                age_group = age_labels[i]
+                break
+        if age_group is None:
+            age_group = age_labels[-1]
         features['Age_Group_Adult'] = 1 if age_group == 'Adult' else 0
         features['Age_Group_Teenager'] = 1 if age_group == 'Teenager' else 0
         features['Age_Group_Children'] = 1 if age_group == 'Children' else 0
         features['Age_Group_Elderly'] = 1 if age_group == 'Elderly' else 0
 
         # Screen time categories
-        if screen_time <= 3:
-            screen_cat = 'Low'
-        elif screen_time <= 6:
-            screen_cat = 'Medium'
-        elif screen_time <= 9:
-            screen_cat = 'High'
-        else:
-            screen_cat = 'Extreme'
-            
+        screen_bins = self.feature_stats.get('screen_bins')
+        screen_labels = ['Low', 'Medium', 'High', 'Extreme']
+        screen_cat = None
+        for i in range(len(screen_bins)-1):
+            if screen_time >= screen_bins[i] and screen_time < screen_bins[i+1]:
+                screen_cat = screen_labels[i]
+                break
+        if screen_cat is None:
+            screen_cat = screen_labels[-1]
         features['Screen_Time_Category_High'] = 1 if screen_cat == 'High' else 0
         features['Screen_Time_Category_Low'] = 1 if screen_cat == 'Low' else 0
         features['Screen_Time_Category_Medium'] = 1 if screen_cat == 'Medium' else 0
         
         # Data usage categories
-        if estimated_data_usage <= 500:
-            data_cat = 'Light'
-        elif estimated_data_usage <= 1500:
-            data_cat = 'Moderate'
-        elif estimated_data_usage <= 3000:
-            data_cat = 'Heavy'
-        else:
-            data_cat = 'Extreme'
-            
+        data_bins = self.feature_stats.get('data_bins')
+        data_labels = ['Light', 'Moderate', 'Heavy', 'Extreme']
+        data_cat = None
+        for i in range(len(data_bins)-1):
+            if estimated_data_usage >= data_bins[i] and estimated_data_usage < data_bins[i+1]:
+                data_cat = data_labels[i]
+                break
+        if data_cat is None:
+            data_cat = data_labels[-1]
         features['Data_Usage_Category_Heavy'] = 1 if data_cat == 'Heavy' else 0
         features['Data_Usage_Category_Light'] = 1 if data_cat == 'Light' else 0
         features['Data_Usage_Category_Moderate'] = 1 if data_cat == 'Moderate' else 0
@@ -159,27 +148,13 @@ class SmartphoneUsagePredictor:
         features['Gender_Male'] = 0  # Default assumption
         
         # Device and OS features (using frequency encoding - set to average frequency)
-        features['Device Model_freq'] = 0.1  # Average frequency
-        features['Operating System_freq'] = 0.5  # Assume common OS
-        features['Device_OS_Combo_freq'] = 0.05  # Average combo frequency
+        features['Device Model_freq'] = 0.1
+        features['Operating System_freq'] = 0.5
+        features['Device_OS_Combo_freq'] = 0.05
         
         return features
     
     def predict_usage_intensity(self, app_usage_time, screen_time, open_apps, age):
-        """
-        Predict smartphone usage intensity from user inputs
-        
-        Parameters:
-        - app_usage_time: App Usage Time in minutes per day
-        - screen_time: Screen On Time in hours per day  
-        - open_apps: Number of apps opened
-        - age: User age
-        
-        Returns:
-        - prediction: Usage intensity category (Very Low, Low, Medium, High, Very High)
-        - confidence: Prediction confidence score
-        """
-        
         # Input validation
         if app_usage_time < 0 or screen_time < 0 or open_apps < 0 or age < 0:
             raise ValueError("All input values must be non-negative")
@@ -199,14 +174,13 @@ class SmartphoneUsagePredictor:
         # Convert to DataFrame
         feature_df = pd.DataFrame([all_features])
         
-        # Select only the features that were used in training
-        # Fill missing features with 0 (they will be handled by scaling)
+        # Select only the features that were used in training and fill missing value with 0
         feature_vector = []
         for feature_name in self.selected_features:
             if feature_name in feature_df.columns:
                 feature_vector.append(feature_df[feature_name].iloc[0])
             else:
-                feature_vector.append(0)  # Default value for missing features
+                feature_vector.append(0)
         
         # Convert to numpy array and reshape
         feature_array = np.array(feature_vector).reshape(1, -1)
@@ -297,12 +271,10 @@ def main():
                 age = int(input("Age: "))
                 
                 # Make prediction
-                prediction, confidence = predictor.predict_usage_intensity(
-                    app_usage, screen_time, open_apps, age
-                )
+                prediction, confidence = predictor.predict_usage_intensity(app_usage, screen_time, open_apps, age)
                 
                 # Get insights
-                insights = predictor.get_usage_insights(app_usage, screen_time, open_apps, age)
+                # insights = predictor.get_usage_insights(app_usage, screen_time, open_apps, age)
                 
                 # Display results
                 print(f"\n{'='*40}")
@@ -311,10 +283,10 @@ def main():
                 print(f"Usage Intensity: {prediction}")
                 print(f"Confidence: {confidence:.2%}")
                 
-                if insights:
-                    print(f"\nInsights:")
-                    for insight in insights:
-                        print(f"• {insight}")
+                # if insights:
+                #     print(f"\nInsights:")
+                #     for insight in insights:
+                #         print(f"• {insight}")
                 
                 # Ask for another prediction
                 another = input(f"\nMake another prediction? (y/n): ").lower()
@@ -325,9 +297,6 @@ def main():
                 print(f"Invalid input: {e}")
             except Exception as e:
                 print(f"Error: {e}")
-        
-        print(f"\nThank you for using the Smartphone Usage Predictor!")
-        
     except Exception as e:
         print(f"Failed to initialize predictor: {e}")
 
