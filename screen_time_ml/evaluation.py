@@ -167,7 +167,7 @@ def map_clusters_to_categories(data, labels, feature_names, n_classes=5):
     sorted_clusters = cluster_means.sort_values('total').index.tolist()
 
     # Definisikan label kategori
-    intensity_labels = ['Sangat Rendah', 'Lumayan Rendah', 'Normal', 'Lumayan Tinggi', 'Sangat Tinggi']
+    intensity_labels = ['Sangat Rendah', 'Rendah', 'Normal', 'Tinggi', 'Sangat Tinggi']
     cluster_to_label = {cluster_id: intensity_labels[i] 
                         for i, cluster_id in enumerate(sorted_clusters[:n_classes])}
 

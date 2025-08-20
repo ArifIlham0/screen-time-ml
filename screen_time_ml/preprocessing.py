@@ -275,7 +275,7 @@ def create_intensity_labels(data, numeric_features):
     intensity_score = np.mean(normalized_features, axis=1)
     
     # Buat kategori berdasarkan quintile
-    labels = pd.qcut(intensity_score, q=5, labels=['Sangat Rendah', 'Cukup Rendah', 'Normal', 'Cukup Tinggi', 'Sangat Tinggi'])
+    labels = pd.qcut(intensity_score, q=5, labels=['Sangat Rendah', 'Rendah', 'Normal', 'Tinggi', 'Sangat Tinggi'])
     
     print("Distribusi label intensitas:")
     print(labels.value_counts().sort_index())
